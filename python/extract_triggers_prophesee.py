@@ -21,9 +21,46 @@ def get_ext_trigger_timestamps(rawfile: Path):
     return {'t': time, 'p': pol}
 
 
+def clean_missing_triggers(time: np.ndarray, pol: np.ndarray):
+    timestamps = []
+    polarities = []
+    
+    index = 0
+    while index < (len(time) - 1):
+        if index == 0:
+            #pdb.set_trace()
+            if pol[index] != pol[index+1]:
+                timestamps.append(time[index])
+                timestamps.append(time[index+1])
+                polarities.append(pol[index])
+                polarities.append(pol[index+1])
+
+                index += 2
+
+            else:
+                index += 1
+
+        else:
+            if (pol[index] != pol[index+1]) and (pol[index] != pol[index-1]):
+                timestamps.append(time[index])
+                timestamps.append(time[index+1])
+                polarities.append(pol[index])
+                polarities.append(pol[index+1])
+
+                index += 2
+
+            else:
+                index += 1
+
+    return np.array(timestamps), np.array(polarities)
+
+
 def get_reconstruction_timestamps(time: np.ndarray, pol: np.ndarray, use_avg_ts: bool=False, time_offset_us: int=0):
     assert 0 <= pol.max() <= 1
     assert np.all(np.abs(np.diff(pol)) == 1), 'polarity must alternate from trigger to trigger'
+    if not np.all(np.abs(np.diff(pol)) == 1):
+        time, pol = clean_missing_triggers(time, pol) 
+    #assert np.all(np.abs(np.diff(pol)) == 1), 'polarity must alternate from trigger to trigger'
 
     timestamps = None
     if use_avg_ts:
