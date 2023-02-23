@@ -3,22 +3,38 @@ from pathlib import Path
 
 import numpy as np
 
-from metavision_core.event_io import RawReader
+from metavision_core.event_io import RawReader, EventsIterator
 
 
 def get_ext_trigger_timestamps(rawfile: Path):
     assert rawfile.exists()
-    assert rawfile.suffix == '.raw'
+    assert rawfile.suffix == ".raw"
 
-    rawreader = RawReader(str(rawfile))
+    mv_iterator = EventsIterator(str(rawfile), delta_t=10000, max_duration=None)
+    all_triggers = []
+    all_polarities = []
+    for evs in mv_iterator:
+        if evs.size != 0:
+            triggers = mv_iterator.reader.get_ext_trigger_events()
+            if len(triggers) > 0:
+                for trigger in triggers:
+                    all_triggers.append(trigger[1])
+                    all_polarities.append(trigger[0])
+                mv_iterator.reader.clear_ext_trigger_events()
 
-    while not rawreader.is_done():
-        rawreader.load_delta_t(10**5)
-    ext_trigger_list = rawreader.get_ext_trigger_events()
-    time = ext_trigger_list['t']
-    pol = ext_trigger_list['p']
+    # rawreader = RawReader(str(rawfile))
+    # print(rawreader)
+    # print(str(rawfile))
 
-    return {'t': time, 'p': pol}
+    # # while not rawreader.is_done():
+    # #     print(rawreader.is_done())
+    # #     arr = rawreader.load_delta_t(10**5)
+    # #     print(arr)
+    # ext_trigger_list = rawreader.get_ext_trigger_events()
+    time = np.array(all_triggers)
+    pol = np.array(all_polarities)
+
+    return {"t": time, "p": pol}
 
 
 def get_reconstruction_timestamps(time: np.ndarray, pol: np.ndarray, use_avg_ts: bool=False, time_offset_us: int=0):
